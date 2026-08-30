@@ -1,9 +1,6 @@
-"""Snapshot the live DDL from Snowflake so source can be diffed against reality.
+"""Dump live schema DDL to snapshot/, to diff against sql/.
 
-    python dump_ddl.py        # writes snapshot/deployed_schema.sql
-
-Account-level objects (security and external access integrations) have no GET_DDL,
-so their definitions live only in sql/91_acs_send.sql.
+Integrations and secrets are account-level and have no GET_DDL; see sql/91_acs_send.sql.
 """
 
 import pathlib

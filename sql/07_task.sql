@@ -1,4 +1,4 @@
--- Created suspended. ALTER TASK ... RESUME when you are ready to go live.
+-- Created suspended.
 create or replace task SENTIMENT.REPORTING.DISPATCH_REPORTS
     warehouse = COMPUTE_WH
     schedule  = 'USING CRON 0 * * * * UTC'

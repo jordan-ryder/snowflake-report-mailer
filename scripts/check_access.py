@@ -1,9 +1,4 @@
-"""Probe Snowflake connectivity and enumerate what the credential can see.
-
-Reads ~/.snowflake/connections.toml. The stored profile mixes a password/PAT with
-authenticator=OAUTH_AUTHORIZATION_CODE (browser flow), which cannot work headless,
-so we try a few auth shapes and report which one actually connects.
-"""
+"""Probe Snowflake connectivity and list what the credential can see."""
 
 import sys
 import tomllib
@@ -25,7 +20,7 @@ def load_profile(name):
 
 
 def auth_variants(base):
-    """Auth shapes to try, in order of likelihood for a headless PAT."""
+    """Auth shapes to try, headless PAT first."""
     secret = base.get("password")
     common = {k: v for k, v in base.items() if k not in ("password", "authenticator")}
     yield "PAT as password (no authenticator)", {**common, "password": secret}

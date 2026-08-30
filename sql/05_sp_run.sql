@@ -1,4 +1,3 @@
--- Render one subscription, record it in the outbox, and send if enabled.
 create or replace procedure SENTIMENT.REPORTING.SP_RUN_REPORT(SUBSCRIPTION_NAME varchar)
 returns varchar
 language sql
@@ -34,7 +33,6 @@ begin
     select value into :v_domains
       from SENTIMENT.REPORTING.REPORT_CONFIG where key = 'recipient_domains';
 
-    -- One bad INSERT should not be able to mail the entire internet from the tenant.
     select count(*) into :v_bad
       from table(flatten(input => :v_recipients)) r
      where lower(split_part(r.value::string, '@', 2)) not in (

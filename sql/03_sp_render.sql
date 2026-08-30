@@ -1,5 +1,3 @@
--- Renders one subscription to an HTML email body and a CSV attachment, in SQL.
--- Column order and headers come from the subscription's `columns` config.
 create or replace procedure SENTIMENT.REPORTING.SP_RENDER_REPORT(SUBSCRIPTION_NAME varchar)
 returns variant
 language sql
@@ -17,7 +15,7 @@ declare
     v_csv_hdr varchar;
     v_csv_bdy varchar;
     v_sql     varchar;
-    -- Inline styles only: Outlook and Gmail strip <style> blocks.
+    -- inline only; Outlook and Gmail strip <style>
     th_style  varchar default 'background:#1a4f8a;color:#ffffff;padding:10px 14px;'
                            || 'text-align:left;font-weight:600;font-size:13px;'
                            || 'letter-spacing:.02em;white-space:nowrap;';
@@ -28,7 +26,6 @@ begin
       from SENTIMENT.REPORTING.REPORT_SUBSCRIPTION
      where name = :SUBSCRIPTION_NAME;
 
-    -- array_agg has no inherent order, so the subscription must name a sort expression
     v_sql := 'select array_agg(object_construct(*)) within group (order by ' || v_order || ') as ROWS_JSON
                 from (' || v_query || ')';
 

@@ -1,4 +1,4 @@
-"""Exercise the reporting pipeline and dump the rendered HTML for inspection."""
+"""Run every subscription and dump the HTML to out/."""
 
 import pathlib
 

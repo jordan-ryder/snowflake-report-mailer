@@ -1,12 +1,8 @@
-"""Unit tests for the IS_DUE schedule predicate.
-
-Evaluates it against a fixed NOW rather than sysdate(), so every branch is checked
-without waiting for real time to pass.
-"""
+"""IS_DUE against a fixed NOW, so no waiting."""
 
 from deploy import connect
 
-NOW = "'2026-08-29 13:00:00'::timestamp_ntz"  # hour 13, day-of-month 29
+NOW = "'2026-08-29 13:00:00'::timestamp_ntz"  # hour 13, dom 29
 
 # label, frequency, hour_utc, day_of_week, day_of_month, last_sent_at, expected
 CASES = [

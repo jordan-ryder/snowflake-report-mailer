@@ -1,4 +1,3 @@
--- The one scheduled entry point. Finds subscriptions due now and runs them.
 create or replace procedure SENTIMENT.REPORTING.SP_DISPATCH()
 returns varchar
 language sql
@@ -17,8 +16,7 @@ begin
                                           day_of_month, last_sent_at, sysdate());
 
     for rec in cur do
-        -- must be bound as :v_name; `rec.name` inside a SQL statement is not
-        -- resolvable and fails with "invalid identifier 'REC.NAME'"
+        -- rec.name is not bindable directly
         v_name := rec.name;
         call SENTIMENT.REPORTING.SP_RUN_REPORT(:v_name);
         v_n := v_n + 1;

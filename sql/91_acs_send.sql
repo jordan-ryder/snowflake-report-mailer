@@ -1,7 +1,4 @@
--- ============================================================================
--- Azure Communication Services email path. Deployed by deploy_acs.py.
--- Replaces the Graph path: RBAC on one resource instead of a tenant-wide grant.
--- ============================================================================
+-- ACS transport. Owns SP_SEND_EMAIL.
 
 create or replace security integration ACS_API_AUTH
     type                 = api_authentication
@@ -28,8 +25,7 @@ create or replace external access integration ACS_ACCESS
     allowed_authentication_secrets = (SENTIMENT.REPORTING.ACS_OAUTH_SECRET)
     enabled                        = true;
 
--- Diagnostic. Note: ACS authorises via Azure RBAC evaluated at the resource, so an
--- empty `roles` claim here is expected and fine - unlike Graph, where it meant failure.
+-- ACS authorises via RBAC at the resource, so `roles` is empty.
 create or replace function SENTIMENT.REPORTING.ACS_TOKEN_INFO()
 returns variant
 language python
@@ -59,8 +55,7 @@ def info():
     }
 $$;
 
--- Signatures changed when CSV attachments were added; CREATE OR REPLACE leaves the
--- old arities behind as overloads, so drop them explicitly.
+-- CREATE OR REPLACE leaves old arities as overloads; drop them.
 drop function if exists SENTIMENT.REPORTING.SEND_ACS_EMAIL(varchar, varchar, array, varchar, varchar);
 drop procedure if exists SENTIMENT.REPORTING.SP_SEND_EMAIL(varchar, array, varchar, varchar);
 
@@ -104,7 +99,6 @@ def send(endpoint, sender, recipients, subject, html, attachment_name, attachmen
     return "SENT"
 $$;
 
--- Point the seam at ACS. Endpoint comes from REPORT_CONFIG, set by terraform output.
 create or replace procedure SENTIMENT.REPORTING.SP_SEND_EMAIL(
     SENDER varchar, RECIPIENTS array, SUBJECT varchar, HTML varchar,
     ATTACHMENT_NAME varchar, ATTACHMENT_B64 varchar)
@@ -117,15 +111,8 @@ declare
 begin
     select value into :v_endpoint
       from SENTIMENT.REPORTING.REPORT_CONFIG where key = 'acs_endpoint';
-    if (v_endpoint is null or v_endpoint = '') then
-        return 'NO_ENDPOINT';
-    end if;
     return (select SENTIMENT.REPORTING.SEND_ACS_EMAIL(
                 :v_endpoint, :SENDER, :RECIPIENTS, :SUBJECT, :HTML,
                 :ATTACHMENT_NAME, :ATTACHMENT_B64));
 end;
 $$;
-
-merge into SENTIMENT.REPORTING.REPORT_CONFIG t
-using (select 'acs_endpoint' as key, '' as value) s on t.key = s.key
-when not matched then insert (key, value) values (s.key, s.value);

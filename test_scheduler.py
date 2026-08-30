@@ -1,8 +1,4 @@
-"""Live test that the Snowflake TASK actually fires and dispatches.
-
-Temporarily drops DISPATCH_REPORTS to a 1-minute cadence, seeds an always-due
-subscription, waits for a real firing, then restores the hourly cron and suspends.
-"""
+"""Drop the task to 1min, wait for a real firing, restore."""
 
 import time
 
@@ -27,8 +23,7 @@ def main():
         d = dict(zip(cols, row))
         return d.get("schedule"), d.get("state")
 
-    # Elapsed seconds, resolved inside SQL. Passing sysdate() (UTC) into the
-    # TIMESTAMP_LTZ parameter reinterprets it as session-local and skews the window.
+    # window resolved in SQL; sysdate() (UTC) into a TIMESTAMP_LTZ param skews it
     t0 = time.time()
 
     try:
@@ -80,7 +75,7 @@ def main():
                          from SENTIMENT.REPORTING.REPORT_OUTBOX
                         where name = '{SMOKE}' order by created_at desc limit 3""")
         print("\noutbox for smoke test:")
-        for n, st, rc, ts in rows or [("(none)", "-", "-", "-")]:
+        for n, st, rc, ts in rows:
             print(f"  {n} {st} rows={rc} {ts}")
 
     finally:
