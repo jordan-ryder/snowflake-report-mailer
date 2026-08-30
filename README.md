@@ -16,9 +16,9 @@ Snowflake's `API_AUTHENTICATION` integration owns the OAuth token, so the UDF ju
 ```bash
 cd infra
 cp terraform.tfvars.example terraform.tfvars    # subscription, client id, sender_domain
-terraform init && terraform apply               # ACS + sending domain + scoped RBAC role
-# add the DNS records it prints, verify the domain in Azure,
-# then set sender_domain_verified = true and apply again
+terraform init && terraform apply               # fails linking the domain - expected
+# add the DNS records from the dns_records output, verify them in Azure
+terraform apply                                 # links it
 
 cd ..
 cp secrets.local.toml.example secrets.local.toml  # fill from `terraform output`
