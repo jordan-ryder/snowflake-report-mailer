@@ -4,17 +4,12 @@ output "acs_endpoint" {
 }
 
 output "sender_address" {
-  description = "MailFrom address on the Azure-managed domain."
-  value       = "donotreply@${azurerm_email_communication_service_domain.this.mail_from_sender_domain}"
+  description = "MailFrom address; the custom domain when one is configured."
+  value = var.custom_domain == null ? (
+    "donotreply@${azurerm_email_communication_service_domain.this.mail_from_sender_domain}"
+  ) : "donotreply@${var.custom_domain}"
 }
 
-output "snowflake_config_sql" {
-  description = "Paste into Snowflake once applied."
-  value       = <<-EOT
-    update SENTIMENT.REPORTING.REPORT_CONFIG set value = '${azurerm_communication_service.this.hostname}' where key = 'acs_endpoint';
-    update SENTIMENT.REPORTING.REPORT_CONFIG set value = 'donotreply@${azurerm_email_communication_service_domain.this.mail_from_sender_domain}' where key = 'sender_mailbox';
-  EOT
-}
 
 output "custom_domain_dns_records" {
   description = "Add these at the registrar, then verify the domain in Azure."
