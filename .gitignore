@@ -1,0 +1,26 @@
+# Secrets and environment-specific config
+secrets.local.toml
+*.tfvars
+!*.tfvars.example
+.env
+
+# Terraform state contains live ACS access keys
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+
+# Tooling and build artifacts
+.venv/
+__pycache__/
+*.pyc
+infra/.bin/
+
+# Generated at runtime
+out/
+snapshot/
+
+# Editor / assistant local config
+.claude/
+.mcp.json

@@ -1,0 +1,11 @@
+[project]
+name = "snowflake-proto"
+version = "0.1.0"
+description = "Snowflake prototyping sandbox"
+requires-python = ">=3.11"
+dependencies = [
+    "snowflake-connector-python",
+]
+
+[tool.uv]
+package = false
