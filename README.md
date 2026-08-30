@@ -1,7 +1,7 @@
 # Snowflake report mailer
 
-Scheduled HTML reports, built in SQL and sent from Snowflake via Azure Communication
-Services. No orchestrator, no app server.
+Scheduled HTML reports, built and sent from Snowflake via Azure Communication Services.
+No orchestrator, no app server.
 
 ```
 TASK_<REPORT>          one task per report, native cron
@@ -9,9 +9,13 @@ TASK_<REPORT>          one task per report, native cron
      └─ SEND_ACS_EMAIL Python UDF: renders the HTML and xlsx, POSTs to ACS
 ```
 
-Snowflake's `API_AUTHENTICATION` integration owns the OAuth token, so the UDF just POSTs.
+Snowflake's `API_AUTHENTICATION` integration holds the Entra credentials and does the
+OAuth exchange, so the UDF just asks for a token and POSTs.
 
 ## Setup
+
+Register an Entra app first. No redirect URI - this is client credentials. Note its
+client id and create a secret.
 
 ```bash
 cd infra
@@ -23,15 +27,12 @@ terraform apply                                 # links it
 cd ..
 cp secrets.local.toml.example secrets.local.toml  # fill from `terraform output`
 python deploy.py
-```
-
-Then resume the tasks you want live:
-
-```sql
 alter task SENTIMENT.REPORTING.TASK_MONTHLY_SENTIMENT resume;
 ```
 
-The Entra app needs no redirect URI - it's client credentials.
+Use a dedicated subdomain for `sender_domain`. ACS verifies SPF by exact string match,
+so it needs `v=spf1 include:spf.protection.outlook.com -all` alone on that hostname -
+which would clash with any SPF already on your root domain.
 
 ## Adding a report
 
@@ -51,20 +52,28 @@ as
     call SENTIMENT.REPORTING.SP_RUN_REPORT('weekly_volume');
 ```
 
-Column headers and their order come from the query itself, so alias them there.
-`order_by` is an optional override for the rare case where the query's own
-`ORDER BY` doesn't survive aggregation.
+Headers and their order come from the query, so alias columns there. Quote the aliases
+or they arrive uppercase.
 
 ## Layout
 
 | | |
 |---|---|
-| `sql/` | tables, ACS transport (renders the HTML and xlsx), the report procedure, seed |
+| `sql/01_tables` | two tables: subscriptions and a run log |
+| `sql/02_acs` | ACS integration objects and the UDF that renders and sends |
+| `sql/03_sp_run_report` | the procedure a task calls |
+| `sql/04_seed` | example reports and their tasks |
 | `infra/` | Terraform for the Azure side |
-| `deploy.py` | applies `sql/`, substitutes `${...}` from `secrets.local.toml` |
+| `deploy.py` | applies `sql/`, substituting `${...}` from `secrets.local.toml` |
 | `test_reports.py` | sends both reports and fires a task |
 
 ## Notes
 
-Values are HTML-escaped. Successful runs append to `REPORT_LOG`;
-failures surface in `TASK_HISTORY`. Suspend a task to stop its report.
+Successful runs append to `REPORT_LOG`; failures surface in `TASK_HISTORY`. Suspend a
+task to stop its report.
+
+`order_by` on a subscription is an optional override. A plain `ORDER BY` in the query
+survives aggregation in practice but isn't guaranteed, so it's there if you need it.
+
+Credentials live in `secrets.local.toml`, which is gitignored. `deploy.py` substitutes
+them at deploy time; nothing is committed and Snowflake won't read the secret back out.
