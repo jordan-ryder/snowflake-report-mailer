@@ -56,10 +56,10 @@ as
 
 | | |
 |---|---|
-| `sql/` | tables, escaping, ACS transport, the report procedure, config, seed |
+| `sql/` | tables, escaping, ACS transport, the report procedure, seed |
 | `infra/` | Terraform for the Azure side |
 | `deploy.py` | applies `sql/`, substitutes `${...}` from `secrets.local.toml` |
-| `test_reports.py` | sends both reports, checks the guard, fires a task |
+| `test_reports.py` | sends both reports and fires a task |
 
 ## Notes
 

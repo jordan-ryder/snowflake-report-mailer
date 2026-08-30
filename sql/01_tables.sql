@@ -1,28 +1,16 @@
 create schema if not exists SENTIMENT.REPORTING;
 
 create or replace table SENTIMENT.REPORTING.REPORT_SUBSCRIPTION (
-    subscription_id number identity primary key,
-    name            varchar not null unique,
-    description     varchar,
-    query_text      varchar not null,
-    order_by        varchar not null,
-    columns         array   not null,   -- [{"key":"MONTH","label":"Month"}]
-    subject         varchar not null,
-    recipients      array   not null,
-    created_at      timestamp_ntz default current_timestamp()
+    name       varchar primary key,
+    query_text varchar,
+    order_by   varchar,
+    columns    array,      -- [{"key":"MONTH","label":"Month"}]
+    subject    varchar,
+    recipients array
 );
 
--- Successes only; failures land in TASK_HISTORY.
 create or replace table SENTIMENT.REPORTING.REPORT_LOG (
-    log_id          number identity primary key,
-    subscription_id number,
-    name            varchar,
-    row_count       number,
-    created_at      timestamp_ntz default current_timestamp()
-);
-
--- Single row, set at deploy time.
-create or replace table SENTIMENT.REPORTING.REPORT_CONFIG (
-    acs_endpoint   varchar,
-    sender_mailbox varchar
+    name       varchar,
+    row_count  number,
+    created_at timestamp_ntz default current_timestamp()
 );

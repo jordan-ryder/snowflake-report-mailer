@@ -1,10 +1,9 @@
 delete from SENTIMENT.REPORTING.REPORT_SUBSCRIPTION where name in ('monthly_sentiment', 'top_channels');
 
 insert into SENTIMENT.REPORTING.REPORT_SUBSCRIPTION
-    (name, description, query_text, order_by, columns, subject, recipients)
+    (name, query_text, order_by, columns, subject, recipients)
 select
     'monthly_sentiment',
-    'Recent months of YouTube sentiment by channel',
     $$select to_char(month, 'YYYY-MM') as month, channel, comments,
              round(pct_positive, 1) as pct_positive,
              round(pct_negative, 1) as pct_negative
@@ -22,7 +21,6 @@ select
 union all
 select
     'top_channels',
-    'Top channels by comment volume',
     $$select channel, sum(comments) as comments,
              round(avg(pct_positive), 1) as avg_pct_positive
         from SENTIMENT.ANALYTICS.MART_YOUTUBE_SENTIMENT_MONTHLY

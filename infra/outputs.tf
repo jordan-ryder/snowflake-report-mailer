@@ -16,6 +16,3 @@ output "custom_domain_dns_records" {
   value       = try(azurerm_email_communication_service_domain.custom[0].verification_records, null)
 }
 
-output "custom_sender_address" {
-  value = var.custom_domain == null ? null : "donotreply@${var.custom_domain}"
-}

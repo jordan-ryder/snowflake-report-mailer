@@ -4,7 +4,6 @@ language sql
 as
 $$
 declare
-    v_id         number;
     v_query      varchar;
     v_order      varchar;
     v_cols       array;
@@ -17,23 +16,16 @@ declare
     v_html       varchar;
     v_csv_hdr    varchar;
     v_csv_bdy    varchar;
-    v_sender     varchar;
-    v_endpoint   varchar;
     v_sql        varchar;
-    v_result     varchar;
     -- inline only; Outlook and Gmail strip <style>
     th_style varchar default 'background:#1a4f8a;color:#ffffff;padding:10px 14px;'
                           || 'text-align:left;font-weight:600;font-size:13px;white-space:nowrap;';
     td_style varchar default 'padding:9px 14px;border-bottom:1px solid #e5e9ee;';
 begin
-    select subscription_id, query_text, order_by, columns, subject, recipients
-      into :v_id, :v_query, :v_order, :v_cols, :v_subject, :v_recipients
+    select query_text, order_by, columns, subject, recipients
+      into :v_query, :v_order, :v_cols, :v_subject, :v_recipients
       from SENTIMENT.REPORTING.REPORT_SUBSCRIPTION
      where name = :SUBSCRIPTION_NAME;
-
-    select acs_endpoint, sender_mailbox
-      into :v_endpoint, :v_sender
-      from SENTIMENT.REPORTING.REPORT_CONFIG;
 
     v_sql := 'select array_agg(object_construct(*)) within group (order by ' || v_order || ')
                 as rows_json from (' || v_query || ')';
@@ -58,11 +50,10 @@ begin
       from (
             select r.index as ridx,
                    listagg('<td style="' || :td_style || '">' ||
-                           SENTIMENT.REPORTING.HTML_ESCAPE(
-                               coalesce(get(r.value, col.value:key::string)::string, '')) ||
+                           SENTIMENT.REPORTING.HTML_ESCAPE(get(r.value, col.value:key::string)::string) ||
                            '</td>', '') within group (order by col.index) as cells,
                    listagg(SENTIMENT.REPORTING.CSV_ESCAPE(
-                               coalesce(get(r.value, col.value:key::string)::string, '')), ',')
+                               get(r.value, col.value:key::string)::string), ',')
                      within group (order by col.index) as csv_cells
               from table(flatten(input => :v_rows)) r
              cross join table(flatten(input => :v_cols)) col
@@ -81,13 +72,12 @@ begin
            || '<tbody>' || v_body || '</tbody></table></div>';
 
     select SENTIMENT.REPORTING.SEND_ACS_EMAIL(
-               :v_endpoint, :v_sender, :v_recipients, :v_subject, :v_html,
+               :v_recipients, :v_subject, :v_html,
                :SUBSCRIPTION_NAME || '_' || to_char(sysdate(), 'YYYY-MM-DD') || '.csv',
-               base64_encode(to_binary(:v_csv_hdr || '\n' || :v_csv_bdy, 'UTF-8')))
-      into :v_result;
+               base64_encode(to_binary(:v_csv_hdr || '\n' || :v_csv_bdy, 'UTF-8')));
 
-    insert into SENTIMENT.REPORTING.REPORT_LOG (subscription_id, name, row_count)
-    select :v_id, :SUBSCRIPTION_NAME, :v_n;
+    insert into SENTIMENT.REPORTING.REPORT_LOG (name, row_count)
+    select :SUBSCRIPTION_NAME, :v_n;
 
     return 'sent ' || v_n || ' rows';
 end;

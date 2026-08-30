@@ -1,4 +1,5 @@
--- Azure Communication Services transport.
+-- Azure Communication Services transport. Endpoint and sender are baked in at
+-- deploy time from secrets.local.toml.
 
 create or replace security integration ACS_API_AUTH
     type                 = api_authentication
@@ -10,10 +11,11 @@ create or replace security integration ACS_API_AUTH
     oauth_allowed_scopes = ('https://communication.azure.com/.default')
     enabled              = true;
 
+-- Snowflake fetches the token itself, so the UDF only ever reaches ACS.
 create or replace network rule SENTIMENT.REPORTING.ACS_NETWORK_RULE
     mode       = egress
     type       = host_port
-    value_list = ('${ACS_HOST}:443', 'login.microsoftonline.com:443');
+    value_list = ('${ACS_HOST}:443');
 
 create or replace secret SENTIMENT.REPORTING.ACS_OAUTH_SECRET
     type               = oauth2
@@ -26,7 +28,7 @@ create or replace external access integration ACS_ACCESS
     enabled                        = true;
 
 create or replace function SENTIMENT.REPORTING.SEND_ACS_EMAIL(
-    ENDPOINT varchar, SENDER varchar, RECIPIENTS array, SUBJECT varchar, HTML varchar,
+    RECIPIENTS array, SUBJECT varchar, HTML varchar,
     ATTACHMENT_NAME varchar, ATTACHMENT_B64 varchar)
 returns varchar
 language python
@@ -41,22 +43,21 @@ import _snowflake
 import requests
 
 
-def send(endpoint, sender, recipients, subject, html, attachment_name, attachment_b64):
+def send(recipients, subject, html, attachment_name, attachment_b64):
     token = _snowflake.get_oauth_access_token('cred')
-    payload = {
-        "senderAddress": sender,
-        "content": {"subject": subject, "html": html},
-        "recipients": {"to": [{"address": a} for a in recipients]},
-        "attachments": [{
-            "name": attachment_name,
-            "contentType": "text/csv",
-            "contentInBase64": attachment_b64,
-        }],
-    }
     resp = requests.post(
-        f"https://{endpoint}/emails:send?api-version=2023-03-31",
+        "https://${ACS_HOST}/emails:send?api-version=2023-03-31",
         headers={"Authorization": f"Bearer {token}"},
-        json=payload,
+        json={
+            "senderAddress": "${SENDER}",
+            "content": {"subject": subject, "html": html},
+            "recipients": {"to": [{"address": a} for a in recipients]},
+            "attachments": [{
+                "name": attachment_name,
+                "contentType": "text/csv",
+                "contentInBase64": attachment_b64,
+            }],
+        },
         timeout=30,
     )
     if resp.status_code not in (200, 202):
