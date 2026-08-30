@@ -4,10 +4,7 @@ language sql
 as
 $$
     replace(replace(replace(replace(coalesce(S, ''),
-        '&', '&amp;'),
-        '<', '&lt;'),
-        '>', '&gt;'),
-        '"', '&quot;')
+        '&', '&amp;'), '<', '&lt;'), '>', '&gt;'), '"', '&quot;')
 $$;
 
 -- RFC 4180 field.

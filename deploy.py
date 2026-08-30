@@ -36,7 +36,7 @@ def render(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--file", help="run one file by name fragment, 9x included")
+    ap.add_argument("--file", help="run one file by name fragment")
     ap.add_argument("--check", action="store_true", help="print current state and exit")
     args = ap.parse_args()
 
@@ -55,10 +55,7 @@ def main():
             print(f"{label}: {', '.join(r[1] for r in cur.fetchall())}")
         return
 
-    if args.file:
-        files = sorted(f for f in SQL_DIR.glob("*.sql") if args.file in f.name)
-    else:
-        files = sorted(f for f in SQL_DIR.glob("*.sql") if not re.match(r"9\d_", f.name))
+    files = sorted(f for f in SQL_DIR.glob("*.sql") if not args.file or args.file in f.name)
 
     for path in files:
         print(f"→ {path.name}")
