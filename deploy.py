@@ -44,10 +44,11 @@ def main():
 
     if args.check:
         cur = conn.cursor()
-        cur.execute("select key, value from SENTIMENT.REPORTING.REPORT_CONFIG order by key")
+        cur.execute("select * from SENTIMENT.REPORTING.REPORT_CONFIG")
+        row = dict(zip([c[0] for c in cur.description], cur.fetchone()))
         print("REPORT_CONFIG:")
-        for k, v in cur.fetchall():
-            print(f"  {k:20s} {v}")
+        for k, v in row.items():
+            print(f"  {k.lower():20s} {v}")
         for label, sql in (("functions", "show user functions in schema SENTIMENT.REPORTING"),
                            ("procedures", "show procedures like 'SP\\_%' in schema SENTIMENT.REPORTING"),
                            ("tasks", "show tasks in schema SENTIMENT.REPORTING")):

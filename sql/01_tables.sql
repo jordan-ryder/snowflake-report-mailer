@@ -22,7 +22,10 @@ create or replace table SENTIMENT.REPORTING.REPORT_LOG (
     created_at      timestamp_ntz default current_timestamp()
 );
 
-create table if not exists SENTIMENT.REPORTING.REPORT_CONFIG (
-    key   varchar primary key,
-    value varchar
+-- Single row, set at deploy time.
+create or replace table SENTIMENT.REPORTING.REPORT_CONFIG (
+    acs_endpoint      varchar,
+    sender_mailbox    varchar,
+    recipient_domains varchar,
+    send_enabled      boolean
 );

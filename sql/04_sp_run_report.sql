@@ -38,11 +38,8 @@ begin
       from SENTIMENT.REPORTING.REPORT_SUBSCRIPTION
      where name = :SUBSCRIPTION_NAME;
 
-    select max(iff(key = 'send_enabled',      value, null))::boolean,
-           max(iff(key = 'sender_mailbox',    value, null)),
-           max(iff(key = 'acs_endpoint',      value, null)),
-           max(iff(key = 'recipient_domains', value, null))
-      into :v_send_enabled, :v_sender, :v_endpoint, :v_domains
+    select acs_endpoint, sender_mailbox, recipient_domains, send_enabled
+      into :v_endpoint, :v_sender, :v_domains, :v_send_enabled
       from SENTIMENT.REPORTING.REPORT_CONFIG;
 
     v_sql := 'select array_agg(object_construct(*)) within group (order by ' || v_order || ')
