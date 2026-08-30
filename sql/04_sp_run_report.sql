@@ -43,13 +43,11 @@ begin
       from SENTIMENT.REPORTING.REPORT_CONFIG;
 
     v_sql := 'select array_agg(object_construct(*)) within group (order by ' || v_order || ')
-                from (' || v_query || ')';
-    let rs resultset := (execute immediate :v_sql);
-    let cur cursor for rs;
-    open cur;
-    fetch cur into v_rows;
-    close cur;
-    v_rows := coalesce(v_rows, array_construct());
+                as rows_json from (' || v_query || ')';
+    execute immediate :v_sql;
+    -- reads the statement above; keep them adjacent
+    select coalesce(rows_json, array_construct()) into :v_rows
+      from table(result_scan(last_query_id()));
     v_n := array_size(v_rows);
 
     select listagg('<th style="' || :th_style || '">' ||
