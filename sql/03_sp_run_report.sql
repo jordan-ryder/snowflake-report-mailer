@@ -6,22 +6,31 @@ $$
 declare
     v_query      varchar;
     v_order      varchar;
-    v_cols       array;
     v_subject    varchar;
     v_recipients array;
+    v_qid        varchar;
+    v_cols       array;
     v_rows       array;
     v_n          number;
     v_sql        varchar;
 begin
-    select query_text, order_by, columns, subject, recipients
-      into :v_query, :v_order, :v_cols, :v_subject, :v_recipients
+    select query_text, order_by, subject, recipients
+      into :v_query, :v_order, :v_subject, :v_recipients
       from SENTIMENT.REPORTING.REPORT_SUBSCRIPTION
      where name = :SUBSCRIPTION_NAME;
 
-    v_sql := 'select array_agg(object_construct(*)) within group (order by ' || v_order || ')
-                as rows_json from (' || v_query || ')';
+    -- run it once; column names and rows both come out of the same result
+    execute immediate :v_query;
+    v_qid := last_query_id();
+
+    execute immediate 'describe result ''' || v_qid || '''';
+    select array_agg("name") into :v_cols from table(result_scan(last_query_id()));
+
+    -- order_by only when set; otherwise the query's own ORDER BY carries through
+    v_sql := 'select array_agg(array_construct(*)) '
+          || coalesce('within group (order by ' || nullif(v_order, '') || ') ', '')
+          || 'as rows_json from table(result_scan(''' || v_qid || '''))';
     execute immediate :v_sql;
-    -- reads the statement above; keep them adjacent
     select coalesce(rows_json, array_construct()) into :v_rows
       from table(result_scan(last_query_id()));
     v_n := array_size(v_rows);

@@ -34,13 +34,12 @@ The Entra app needs no redirect URI - it's client credentials.
 ## Adding a report
 
 ```sql
-insert into SENTIMENT.REPORTING.REPORT_SUBSCRIPTION
-    (name, query_text, order_by, columns, subject, recipients)
+insert into SENTIMENT.REPORTING.REPORT_SUBSCRIPTION (name, query_text, subject, recipients)
 select 'weekly_volume',
-       $$select channel, sum(comments) as comments from ... group by channel$$,
-       'comments desc',
-       array_construct(object_construct('key','CHANNEL', 'label','Channel'),
-                       object_construct('key','COMMENTS','label','Comments')),
+       $$select channel       as "Channel",
+                sum(comments) as "Comments"
+           from ... group by channel
+          order by "Comments" desc$$,
        'Weekly volume', array_construct('someone@example.com');
 
 create task SENTIMENT.REPORTING.TASK_WEEKLY_VOLUME
@@ -50,7 +49,9 @@ as
     call SENTIMENT.REPORTING.SP_RUN_REPORT('weekly_volume');
 ```
 
-`columns` sets order and headers. `order_by` is required - `array_agg` has no inherent order.
+Column headers and their order come from the query itself, so alias them there.
+`order_by` is an optional override for the rare case where the query's own
+`ORDER BY` doesn't survive aggregation.
 
 ## Layout
 

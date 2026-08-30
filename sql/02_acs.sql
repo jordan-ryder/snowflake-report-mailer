@@ -62,17 +62,16 @@ EDGE = Side(style="thin", color="C0C0C0")
 BORDER = Border(left=EDGE, right=EDGE, top=EDGE, bottom=EDGE)
 
 
-def cell(row, key):
-    value = row.get(key)
+def cell(value):
     return html.escape("" if value is None else str(value))
 
 
 def render_html(subject, rows, columns):
-    head = "".join(f'<th style="{TH}">{html.escape(c["label"])}</th>' for c in columns)
+    head = "".join(f'<th style="{TH}">{html.escape(c)}</th>' for c in columns)
     body = "".join(
         '<tr style="background:{}">{}</tr>'.format(
             "#f6f8fa;" if i % 2 else "#ffffff;",
-            "".join(f'<td style="{TD}">{cell(row, c["key"])}</td>' for c in columns))
+            "".join(f'<td style="{TD}">{cell(v)}</td>' for v in row))
         for i, row in enumerate(rows))
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     return (
@@ -86,12 +85,11 @@ def render_html(subject, rows, columns):
 
 
 def render_xlsx(rows, columns):
-    keys = [c["key"] for c in columns]
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.append([c["label"] for c in columns])
+    ws.append(list(columns))
     for row in rows:
-        ws.append([row.get(k) for k in keys])
+        ws.append(list(row))
 
     for c in ws[1]:
         c.fill = HEADER_FILL
