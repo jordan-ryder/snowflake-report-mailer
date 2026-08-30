@@ -22,22 +22,17 @@ variable "prefix" {
 }
 
 variable "app_client_id" {
-  description = <<-EOT
-    Application (client) ID of the existing Entra app registration that Snowflake
-    authenticates as. Terraform grants this app the ACS send role; it does not
-    create the app.
-  EOT
+  description = "Entra app registration Snowflake authenticates as. Granted the ACS send role here; not created here."
   type        = string
 }
 
-variable "custom_domain" {
-  description = "Domain to send from, e.g. example.com. Null uses the Azure-managed domain only."
+variable "sender_domain" {
+  description = "Domain to send from, e.g. reports.example.com. Use a dedicated subdomain: ACS requires an exact SPF record that would clash with an existing one on the root."
   type        = string
-  default     = null
 }
 
-variable "custom_domain_verified" {
-  description = "Set true once the custom domain's DNS records are verified in Azure."
+variable "sender_domain_verified" {
+  description = "Set true once the DNS records are verified in Azure."
   type        = bool
   default     = false
 }
