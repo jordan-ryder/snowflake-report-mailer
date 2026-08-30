@@ -43,3 +43,20 @@ resource "azurerm_role_assignment" "sender" {
   role_definition_name = "Communication and Email Service Owner"
   principal_id         = data.azuread_service_principal.sender.object_id
 }
+
+# Managed domains are capped at 10 emails/hour and cannot be raised. A verified
+# custom domain starts at 100/hour, with increases available on request.
+resource "azurerm_email_communication_service_domain" "custom" {
+  count             = var.custom_domain == null ? 0 : 1
+  name              = var.custom_domain
+  email_service_id  = azurerm_email_communication_service.this.id
+  domain_management = "CustomerManaged"
+}
+
+# Azure refuses to link an unverified domain. Add the DNS records, verify in the
+# portal, then set custom_domain_verified = true and apply again.
+resource "azurerm_communication_service_email_domain_association" "custom" {
+  count                    = var.custom_domain_verified ? 1 : 0
+  communication_service_id = azurerm_communication_service.this.id
+  email_service_domain_id  = azurerm_email_communication_service_domain.custom[0].id
+}

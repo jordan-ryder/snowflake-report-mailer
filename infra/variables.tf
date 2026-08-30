@@ -29,3 +29,15 @@ variable "app_client_id" {
   EOT
   type        = string
 }
+
+variable "custom_domain" {
+  description = "Domain to send from, e.g. example.com. Null uses the Azure-managed domain only."
+  type        = string
+  default     = null
+}
+
+variable "custom_domain_verified" {
+  description = "Set true once the custom domain's DNS records are verified in Azure."
+  type        = bool
+  default     = false
+}
