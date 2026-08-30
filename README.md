@@ -56,12 +56,12 @@ as
 
 | | |
 |---|---|
-| `sql/` | tables, escaping, ACS transport, the report procedure, seed |
+| `sql/` | tables, escaping, ACS transport (+ xlsx builder), the report procedure, seed |
 | `infra/` | Terraform for the Azure side |
 | `deploy.py` | applies `sql/`, substitutes `${...}` from `secrets.local.toml` |
 | `test_reports.py` | sends both reports and fires a task |
 
 ## Notes
 
-Values are HTML-escaped and CSV-quoted. Successful runs append to `REPORT_LOG`;
+Values are HTML-escaped. Successful runs append to `REPORT_LOG`;
 failures surface in `TASK_HISTORY`. Suspend a task to stop its report.

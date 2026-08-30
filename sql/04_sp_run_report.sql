@@ -14,8 +14,6 @@ declare
     v_head       varchar;
     v_body       varchar;
     v_html       varchar;
-    v_csv_hdr    varchar;
-    v_csv_bdy    varchar;
     v_sql        varchar;
     -- inline only; Outlook and Gmail strip <style>
     th_style varchar default 'background:#1a4f8a;color:#ffffff;padding:10px 14px;'
@@ -37,24 +35,18 @@ begin
 
     select listagg('<th style="' || :th_style || '">' ||
                    SENTIMENT.REPORTING.HTML_ESCAPE(col.value:label::string) || '</th>', '')
-             within group (order by col.index),
-           listagg(SENTIMENT.REPORTING.CSV_ESCAPE(col.value:label::string), ',')
              within group (order by col.index)
-      into :v_head, :v_csv_hdr
+      into :v_head
       from table(flatten(input => :v_cols)) col;
 
     select coalesce(listagg('<tr style="background:' || iff(ridx % 2 = 1, '#f6f8fa', '#ffffff') ||
-                            ';">' || cells || '</tr>', '') within group (order by ridx), ''),
-           coalesce(listagg(csv_cells, '\n') within group (order by ridx), '')
-      into :v_body, :v_csv_bdy
+                            ';">' || cells || '</tr>', '') within group (order by ridx), '')
+      into :v_body
       from (
             select r.index as ridx,
                    listagg('<td style="' || :td_style || '">' ||
                            SENTIMENT.REPORTING.HTML_ESCAPE(get(r.value, col.value:key::string)::string) ||
-                           '</td>', '') within group (order by col.index) as cells,
-                   listagg(SENTIMENT.REPORTING.CSV_ESCAPE(
-                               get(r.value, col.value:key::string)::string), ',')
-                     within group (order by col.index) as csv_cells
+                           '</td>', '') within group (order by col.index) as cells
               from table(flatten(input => :v_rows)) r
              cross join table(flatten(input => :v_cols)) col
              group by r.index
@@ -73,8 +65,8 @@ begin
 
     select SENTIMENT.REPORTING.SEND_ACS_EMAIL(
                :v_recipients, :v_subject, :v_html,
-               :SUBSCRIPTION_NAME || '_' || to_char(sysdate(), 'YYYY-MM-DD') || '.csv',
-               base64_encode(to_binary(:v_csv_hdr || '\n' || :v_csv_bdy, 'UTF-8')));
+               :SUBSCRIPTION_NAME || '_' || to_char(sysdate(), 'YYYY-MM-DD') || '.xlsx',
+               :v_rows, :v_cols);
 
     insert into SENTIMENT.REPORTING.REPORT_LOG (name, row_count)
     select :SUBSCRIPTION_NAME, :v_n;

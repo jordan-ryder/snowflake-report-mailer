@@ -29,21 +29,57 @@ create or replace external access integration ACS_ACCESS
 
 create or replace function SENTIMENT.REPORTING.SEND_ACS_EMAIL(
     RECIPIENTS array, SUBJECT varchar, HTML varchar,
-    ATTACHMENT_NAME varchar, ATTACHMENT_B64 varchar)
+    ATTACHMENT_NAME varchar, DATA_ROWS array, DATA_COLS array)
 returns varchar
 language python
 runtime_version = '3.11'
 handler = 'send'
 external_access_integrations = (ACS_ACCESS)
 secrets = ('cred' = SENTIMENT.REPORTING.ACS_OAUTH_SECRET)
-packages = ('requests')
+packages = ('requests', 'openpyxl')
 as
 $$
+import base64
+import io
+
 import _snowflake
+import openpyxl
 import requests
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+HEADER_FILL = PatternFill("solid", start_color="1A4F8A", end_color="1A4F8A")
+HEADER_FONT = Font(color="FFFFFF", bold=True)
+EDGE = Side(style="thin", color="C0C0C0")
+BORDER = Border(left=EDGE, right=EDGE, top=EDGE, bottom=EDGE)
 
 
-def send(recipients, subject, html, attachment_name, attachment_b64):
+def workbook(rows, columns):
+    keys = [c["key"] for c in columns]
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append([c["label"] for c in columns])
+    for row in rows:
+        ws.append([row.get(k) for k in keys])
+
+    for cell in ws[1]:
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = Alignment(horizontal="left")
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.border = BORDER
+
+    for i, col in enumerate(ws.columns, start=1):
+        width = max(len(str(c.value)) for c in col if c.value is not None)
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = min(width + 4, 50)
+
+    ws.freeze_panes = "A2"
+    buf = io.BytesIO()
+    wb.save(buf)
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def send(recipients, subject, html, attachment_name, rows, columns):
     token = _snowflake.get_oauth_access_token('cred')
     resp = requests.post(
         "https://${ACS_HOST}/emails:send?api-version=2023-03-31",
@@ -54,8 +90,8 @@ def send(recipients, subject, html, attachment_name, attachment_b64):
             "recipients": {"to": [{"address": a} for a in recipients]},
             "attachments": [{
                 "name": attachment_name,
-                "contentType": "text/csv",
-                "contentInBase64": attachment_b64,
+                "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "contentInBase64": workbook(rows, columns),
             }],
         },
         timeout=30,
