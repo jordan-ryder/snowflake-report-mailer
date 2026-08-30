@@ -1,5 +1,5 @@
--- Azure Communication Services transport. Endpoint and sender are baked in at
--- deploy time from secrets.local.toml.
+-- Azure Communication Services transport. Renders the email and sends it.
+-- Endpoint and sender are baked in at deploy time from secrets.local.toml.
 
 create or replace security integration ACS_API_AUTH
     type                 = api_authentication
@@ -28,8 +28,8 @@ create or replace external access integration ACS_ACCESS
     enabled                        = true;
 
 create or replace function SENTIMENT.REPORTING.SEND_ACS_EMAIL(
-    RECIPIENTS array, SUBJECT varchar, HTML varchar,
-    ATTACHMENT_NAME varchar, DATA_ROWS array, DATA_COLS array)
+    RECIPIENTS array, SUBJECT varchar, REPORT_NAME varchar,
+    DATA_ROWS array, DATA_COLS array)
 returns varchar
 language python
 runtime_version = '3.11'
@@ -40,12 +40,21 @@ packages = ('requests', 'openpyxl')
 as
 $$
 import base64
+import html
 import io
+from datetime import datetime, timezone
 
 import _snowflake
 import openpyxl
 import requests
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+# inline only; Outlook and Gmail strip <style>
+TH = ("background:#1a4f8a;color:#ffffff;padding:10px 14px;text-align:left;"
+      "font-weight:600;font-size:13px;white-space:nowrap;")
+TD = "padding:9px 14px;border-bottom:1px solid #e5e9ee;"
+TABLE = "border-collapse:collapse;font-size:14px;border:1px solid #d8dee4;"
+PAGE = "font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1f2328;"
 
 HEADER_FILL = PatternFill("solid", start_color="1A4F8A", end_color="1A4F8A")
 HEADER_FONT = Font(color="FFFFFF", bold=True)
@@ -53,7 +62,30 @@ EDGE = Side(style="thin", color="C0C0C0")
 BORDER = Border(left=EDGE, right=EDGE, top=EDGE, bottom=EDGE)
 
 
-def workbook(rows, columns):
+def cell(row, key):
+    value = row.get(key)
+    return html.escape("" if value is None else str(value))
+
+
+def render_html(subject, rows, columns):
+    head = "".join(f'<th style="{TH}">{html.escape(c["label"])}</th>' for c in columns)
+    body = "".join(
+        '<tr style="background:{}">{}</tr>'.format(
+            "#f6f8fa;" if i % 2 else "#ffffff;",
+            "".join(f'<td style="{TD}">{cell(row, c["key"])}</td>' for c in columns))
+        for i, row in enumerate(rows))
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    return (
+        f'<div style="{PAGE}">'
+        f'<h2 style="margin:0 0 4px;font-size:19px;color:#1a4f8a;">{html.escape(subject)}</h2>'
+        f'<p style="margin:0 0 18px;color:#656d76;font-size:13px;">'
+        f'{len(rows)} rows &middot; {stamp} UTC &middot; full data attached</p>'
+        f'<table cellpadding="0" cellspacing="0" role="presentation" style="{TABLE}">'
+        f'<thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+    )
+
+
+def render_xlsx(rows, columns):
     keys = [c["key"] for c in columns]
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -61,14 +93,13 @@ def workbook(rows, columns):
     for row in rows:
         ws.append([row.get(k) for k in keys])
 
-    for cell in ws[1]:
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
-        cell.alignment = Alignment(horizontal="left")
+    for c in ws[1]:
+        c.fill = HEADER_FILL
+        c.font = HEADER_FONT
+        c.alignment = Alignment(horizontal="left")
     for row in ws.iter_rows():
-        for cell in row:
-            cell.border = BORDER
-
+        for c in row:
+            c.border = BORDER
     for i, col in enumerate(ws.columns, start=1):
         width = max(len(str(c.value)) for c in col if c.value is not None)
         ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = min(width + 4, 50)
@@ -79,19 +110,19 @@ def workbook(rows, columns):
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def send(recipients, subject, html, attachment_name, rows, columns):
+def send(recipients, subject, report_name, rows, columns):
     token = _snowflake.get_oauth_access_token('cred')
     resp = requests.post(
         "https://${ACS_HOST}/emails:send?api-version=2023-03-31",
         headers={"Authorization": f"Bearer {token}"},
         json={
             "senderAddress": "${SENDER}",
-            "content": {"subject": subject, "html": html},
+            "content": {"subject": subject, "html": render_html(subject, rows, columns)},
             "recipients": {"to": [{"address": a} for a in recipients]},
             "attachments": [{
-                "name": attachment_name,
+                "name": f"{report_name}_{datetime.now(timezone.utc):%Y-%m-%d}.xlsx",
                 "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "contentInBase64": workbook(rows, columns),
+                "contentInBase64": render_xlsx(rows, columns),
             }],
         },
         timeout=30,

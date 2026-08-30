@@ -4,9 +4,9 @@ Scheduled HTML reports, built in SQL and sent from Snowflake via Azure Communica
 Services. No orchestrator, no app server.
 
 ```
-TASK_<REPORT>              one task per report, native cron
- └─ SP_RUN_REPORT          renders HTML + CSV, guards recipients, sends, logs
-     └─ SEND_ACS_EMAIL     Python UDF → ACS
+TASK_<REPORT>          one task per report, native cron
+ └─ SP_RUN_REPORT      runs the query, logs the run
+     └─ SEND_ACS_EMAIL Python UDF: renders the HTML and xlsx, POSTs to ACS
 ```
 
 Snowflake's `API_AUTHENTICATION` integration owns the OAuth token, so the UDF just POSTs.
@@ -56,7 +56,7 @@ as
 
 | | |
 |---|---|
-| `sql/` | tables, escaping, ACS transport (+ xlsx builder), the report procedure, seed |
+| `sql/` | tables, ACS transport (renders the HTML and xlsx), the report procedure, seed |
 | `infra/` | Terraform for the Azure side |
 | `deploy.py` | applies `sql/`, substitutes `${...}` from `secrets.local.toml` |
 | `test_reports.py` | sends both reports and fires a task |

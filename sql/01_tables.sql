@@ -1,6 +1,6 @@
 create schema if not exists SENTIMENT.REPORTING;
 
-create or replace table SENTIMENT.REPORTING.REPORT_SUBSCRIPTION (
+create table if not exists SENTIMENT.REPORTING.REPORT_SUBSCRIPTION (
     name       varchar primary key,
     query_text varchar,
     order_by   varchar,
@@ -9,7 +9,7 @@ create or replace table SENTIMENT.REPORTING.REPORT_SUBSCRIPTION (
     recipients array
 );
 
-create or replace table SENTIMENT.REPORTING.REPORT_LOG (
+create table if not exists SENTIMENT.REPORTING.REPORT_LOG (
     name       varchar,
     row_count  number,
     created_at timestamp_ntz default current_timestamp()
