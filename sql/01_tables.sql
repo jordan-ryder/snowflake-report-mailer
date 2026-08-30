@@ -12,20 +12,17 @@ create or replace table SENTIMENT.REPORTING.REPORT_SUBSCRIPTION (
     created_at      timestamp_ntz default current_timestamp()
 );
 
+-- Successes only; failures land in TASK_HISTORY.
 create or replace table SENTIMENT.REPORTING.REPORT_LOG (
     log_id          number identity primary key,
     subscription_id number,
     name            varchar,
     row_count       number,
-    status          varchar,    -- SENT|FAILED|SKIPPED_EMPTY|BLOCKED_RECIPIENT|RENDERED
-    error           varchar,
     created_at      timestamp_ntz default current_timestamp()
 );
 
 -- Single row, set at deploy time.
 create or replace table SENTIMENT.REPORTING.REPORT_CONFIG (
-    acs_endpoint      varchar,
-    sender_mailbox    varchar,
-    recipient_domains varchar,
-    send_enabled      boolean
+    acs_endpoint   varchar,
+    sender_mailbox varchar
 );

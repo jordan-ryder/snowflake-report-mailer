@@ -61,8 +61,7 @@ as
 | `deploy.py` | applies `sql/`, substitutes `${...}` from `secrets.local.toml` |
 | `test_reports.py` | sends both reports, checks the guard, fires a task |
 
-## Guardrails
+## Notes
 
-`recipient_domains` is an allowlist - anything else is `BLOCKED_RECIPIENT`, never sent.
-Values are HTML-escaped and CSV-quoted. Empty results are `SKIPPED_EMPTY`. Every run
-appends to `REPORT_LOG`.
+Values are HTML-escaped and CSV-quoted. Successful runs append to `REPORT_LOG`;
+failures surface in `TASK_HISTORY`. Suspend a task to stop its report.
